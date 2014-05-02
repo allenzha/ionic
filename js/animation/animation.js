@@ -261,6 +261,7 @@
           // for the gap in playback (to keep timing the same)
           var t = self._pauseState.pausedAt;
           start = start + (now - t);
+          lastFrame = now;
         }
 
         // Normalize virtual value
