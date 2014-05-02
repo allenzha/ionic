@@ -149,6 +149,12 @@
       window.cancelAnimationFrame(closure);
     },
     restart: function() {
+      var self = this;
+
+      this.isRunning = false;
+      ionic.requestAnimationFrame(function() {
+        self.start();
+      })
     },
 
     start: function() {
