@@ -164,6 +164,7 @@
         tf = ionic.Animation.TimingFn[this.curve] || ionic.Animation.TimingFn['linear'];
         if(this.curve.indexOf('cubic-bezier(') >= 0) {
           var parts = this.curve.replace('cubic-bezier(', '').replace(')', '').split(',');
+          tf = ionic.Animation.TimingFn['cubic-bezier'];
           tf = tf(parts[0], parts[1], parts[2], parts[3], this.duration);
         } else {
           tf = tf(this.duration);

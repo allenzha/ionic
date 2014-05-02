@@ -31,8 +31,9 @@
       }
     },
     'cubic-bezier': function(x1, y1, x2, y2, duration) {
+      var bz = ionic.Animation.Bezier.cubicBezier(x1, y1, x2, y2);//, t, duration);
       return function(t) {
-        return ionic.Animation.Bezier.cubicBezier(x1, y1, x2, y2, t, duration);
+        return bz(t, duration);
       }
     }
   };

@@ -266,8 +266,8 @@
        * @param duration {number} the duration of the animation in milliseconds
        * @return {number} the y value along the bezier curve
        */
-      cubicBezier: function(p1x, p1y, p2x, p2y, x, duration) {
-        return unitBezier(p1x, p1y, p2x, p2y)(x, duration);
+      cubicBezier: function(p1x, p1y, p2x, p2y) {
+        return unitBezier(p1x, p1y, p2x, p2y);
       }
     };
   })();
