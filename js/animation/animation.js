@@ -118,6 +118,13 @@
     reverse: false,
     autoReverse: false,
 
+    _updateTimingState: function() {
+      if(this.isPaused) {
+        this._currentTime = this._pauseState.pausedAt;
+      } else {
+      }
+    },
+
     step: function(percent) {},
 
     stop: function() {
@@ -126,17 +133,20 @@
     },
     play: function() {
       this.isPaused = false;
-      this.start();
+      if(this._lastStepFn) {
+        this._unpausedAnimation = true;
+        ionic.requestAnimationFrame(this._lastStepFn);
+      }
     },
     pause: function() {
       this.isPaused = true;
     },
-    _saveState: function(percent, iteration, reverse) {
+    _saveState: function(now, closure) {
       this._pauseState = {
-        percent: percent,
-        iteration: iteration,
-        reverse: reverse
+        pausedAt: now,
       }
+      this._lastStepFn = closure;
+      window.cancelAnimationFrame(closure);
     },
     restart: function() {
     },
@@ -152,12 +162,18 @@
       // Grab the timing function
       if(typeof this.curve === 'string') {
         tf = ionic.Animation.TimingFn[this.curve] || ionic.Animation.TimingFn['linear'];
+        if(this.curve.indexOf('cubic-bezier(') >= 0) {
+          var parts = this.curve.replace('cubic-bezier(', '').replace(')', '').split(',');
+          tf = tf(parts[0], parts[1], parts[2], parts[3], this.duration);
+        } else {
+          tf = tf(this.duration);
+        }
       } else {
         tf = this.curve;
+        tf = tf(this.duration);
       }
 
       // Get back a timing function for the given duration (used for precision)
-      tf = tf(this.duration);
 
       // Set up the initial animation state
       var animState = {
@@ -169,13 +185,6 @@
         reverse: this.reverse,
         repeat: this.repeat,
         autoReverse: this.autoReverse
-      }
-
-
-      if(this._pauseState) {
-        // We were paused, so update the fields
-        ionic.extend(animState, this._pauseState);
-        this._pauseState = null;
       }
 
       ionic.Animation.animationStarted(this);
@@ -203,7 +212,6 @@
      * @return {Integer} Identifier of animation. Can be used to stop it any time.
      */
     _run: function(stepCallback, completedCallback, state) {
-
       var self = this;
       var start = time();
       var lastFrame = start;
@@ -245,17 +253,24 @@
 
       // This is the internal step method which is called every few milliseconds
       var step = function(virtual) {
+        var now = time();
+
+        if(self._unpausedAnimation) {
+          // We unpaused. Increase the start time to account
+          // for the gap in playback (to keep timing the same)
+          var t = self._pauseState.pausedAt;
+          start = start + (now - t);
+        }
 
         // Normalize virtual value
         var render = virtual !== true;
 
         // Get current time
-        var now = time();
         var diff = now - start;
 
         // Verification is executed before next animation step
         if(self.isPaused) {
-          self._saveState(percent, iteration, reverse);
+          self._saveState(now, step);//percent, iteration, reverse);
           return;
         }
 
@@ -272,7 +287,11 @@
         if (render) {
 
           var droppedFrames = Math.round((now - lastFrame) / (millisecondsPerSecond / desiredFrames)) - 1;
+          if(self._unpausedAnimation) {
+            console.log('After pausing', droppedFrames, 'Dropped frames');
+          }
           for (var j = 0; j < Math.min(droppedFrames, 4); j++) {
+            console.log('drop step');
             step(true);
             dropCounter++;
           }
@@ -293,6 +312,8 @@
             }
           }
         }
+
+        self._unpausedAnimation = false;
 
         // Execute step callback, then...
         var value = easingMethod ? easingMethod(percent) : percent;

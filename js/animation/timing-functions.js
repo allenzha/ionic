@@ -29,6 +29,11 @@
       return function(t) {
         return ionic.Animation.Bezier.easeInOut(t, duration);
       }
+    },
+    'cubic-bezier': function(x1, y1, x2, y2, duration) {
+      return function(t) {
+        return ionic.Animation.Bezier.cubicBezier(x1, y1, x2, y2, t, duration);
+      }
     }
   };
 })(window);
