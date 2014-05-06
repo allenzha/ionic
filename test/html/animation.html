@@ -14,9 +14,12 @@
         height: 100px;
         background-color: black;
       }
+      #draggable {
+        top: 200px;
+      }
       #opts {
         position: absolute;
-        top: 200px;
+        top: 400px;
         left: 10px;
       }
     </style>
@@ -27,6 +30,7 @@
 
     <div ng-controller="MyCtrl">
       <div class="box"></div>
+      <div class="box" id="draggable"></div>
       <div id="opts">
         <label>
           Duration:
@@ -73,7 +77,21 @@
       .config(['$ionicAnimationProvider', function($ionicAnimationProvider) {
         //$ionicAnimationProvider.setSlowAnimations(true);
       }])
-      .controller('MyCtrl', function($scope, $ionicAnimation) {
+      .controller('MyCtrl', function($scope, $ionicAnimation, $ionicGesture) {
+        var gestureEl = angular.element(document.getElementById('draggable'));
+        var dragAnim = $ionicAnimation({
+          curve: 'linear',
+          step: function(v) {
+            console.log(v);
+            gestureEl[0].style[ionic.CSS.TRANSFORM] = 'translate3d(' + (v * 400) + 'px, 0,0)';
+          }
+        });
+        $ionicGesture.on('drag', function(e) {
+          var x = e.gesture.touches[0].pageX;
+          dragAnim.setPercent(Math.max(0, Math.min(x, 400) / 400));
+        }, gestureEl);
+
+
         var currentAnimation;
         $scope.fns = [
           'linear',
@@ -118,6 +136,14 @@
               console.log('Animation complete!');
             }
           }, $scope.anim));
+
+          $ionicGesture.on('drag', function(e) {
+            var x = e.gesture.touches[0].pageX;
+            currentAnimation.setPercent(Math.max(0, Math.min(x, 400) / 400));
+          }, angular.element(el));
+          $ionicGesture.on('release', function(e) {
+            currentAnimation.play();
+          }, angular.element(el));
 
           currentAnimation.start();
         }

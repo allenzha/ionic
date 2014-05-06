@@ -4,99 +4,10 @@
   };
   var desiredFrames = 60;
   var millisecondsPerSecond = 1000;
-  var running = {};
-  var counter = 1;
 
   // Namespace
-  ionic.Animation = {};
-
-  /**
-   * The main animation system manager. Treated as a singleton.
-   */
-  ionic.Animation = {
-    create: function(opts) {
-      return new ionic.Animation.Animation(opts);
-    },
-
-    animationStarted: function(instance) {
-      var id = counter++;
-
-      // Compacting running db automatically every few new animations
-      if (id % 20 === 0) {
-        var newRunning = {};
-        for (var usedId in running) {
-          newRunning[usedId] = true;
-        }
-        running = newRunning;
-      }
-
-      // Mark as running
-      running[id] = true;
-
-      instance.isRunning = true;
-      instance._animationId = id;
-
-      // Return unique animation ID
-      return id;
-    },
-
-    animationStopped: function(instance) {
-      instance.isRunning = false;
-    }
-
-    /* TODO: Move animation set management here instead of instance
-    anims: [],
-    add: function(animation) {
-      this.anims.push(animation);
-    },
-    remove: function(animation) {
-      var i, j;
-      for(i = 0, j = this.anims.length; i < j; i++) {
-        if(this.anims[i] === animation) {
-          return this.anims.splice(i, 1);
-        }
-      }
-    },
-    clear: function(shouldStop) {
-      while(this.anims.length) {
-        var anim = this.anims.pop();
-        if(shouldStop === true) {
-          anim.stop();
-        }
-      }
-    },
-    */
-
-    /**
-     * Stops the given animation.
-     *
-     * @param id {Integer} Unique animation ID
-     * @return {Boolean} Whether the animation was stopped (aka, was running before)
-     * TODO: Requires above fix
-    stop: function(id) {
-      var cleared = running[id] != null;
-      if (cleared) {
-        running[id] = null;
-      }
-
-      return cleared;
-    },
-     */
-
-
-    /**
-     * Whether the given animation is still running.
-     *
-     * @param id {Integer} Unique animation ID
-     * @return {Boolean} Whether the animation is still running
-    isRunning: function(id) {
-      return running[id] != null;
-    },
-     */
-
-  };
-
-  /**
+  ionic.Animation = ionic.Animation || {};
+/**
    * Animation instance
    */
   ionic.Animation.Animation = function(opts) {
@@ -112,21 +23,30 @@
   ionic.Animation.Animation.prototype = {
     el: null,
     curve: 'linear',
+    curveFn: ionic.Animation.TimingFn['linear'],
     duration: 500,
     delay: 0,
     repeat: -1,
     reverse: false,
     autoReverse: false,
 
-    _updateTimingState: function() {
-      if(this.isPaused) {
-        this._currentTime = this._pauseState.pausedAt;
-      } else {
-      }
-    },
-
+    // Overridable
     step: function(percent) {},
 
+    setPercent: function(percent, doesSetState) {
+      this.pause();
+
+      var v = this.curveFn(percent);
+
+      // Check if we should change any internal saved state (to resume
+      // from this value later on, for example. Defaults to true)
+      if(doesSetState !== false && this._pauseState) {
+        // Not sure yet on this
+      }
+
+      this.step(v);
+      //var value = easingMethod ? easingMethod(percent) : percent;
+    },
     stop: function() {
       this.isRunning = false;
       this.shouldEnd = true;
@@ -135,6 +55,7 @@
       this.isPaused = false;
       if(this._lastStepFn) {
         this._unpausedAnimation = true;
+        ionic.cancelAnimationFrame(this._lastStepFn);
         ionic.requestAnimationFrame(this._lastStepFn);
       }
     },
@@ -152,6 +73,8 @@
       var self = this;
 
       this.isRunning = false;
+
+      // TODO: Verify this isn't totally stupid
       ionic.requestAnimationFrame(function() {
         self.start();
       })
@@ -160,34 +83,12 @@
     start: function() {
       var self = this;
 
-      var tf;
-
-      console.log('Starting animation', this);
-
-
-      // Grab the timing function
-      if(typeof this.curve === 'string') {
-        tf = ionic.Animation.TimingFn[this.curve] || ionic.Animation.TimingFn['linear'];
-        if(this.curve.indexOf('cubic-bezier(') >= 0) {
-          var parts = this.curve.replace('cubic-bezier(', '').replace(')', '').split(',');
-          tf = ionic.Animation.TimingFn['cubic-bezier'];
-          tf = tf(parts[0], parts[1], parts[2], parts[3], this.duration);
-        } else {
-          tf = tf(this.duration);
-        }
-      } else {
-        tf = this.curve;
-        tf = tf(this.duration);
-      }
-
-      // Get back a timing function for the given duration (used for precision)
-
       // Set up the initial animation state
       var animState = {
         startPercent: this.reverse === true ? 1 : 0,
         endPercent: this.reverse === true ? 0 : 1,
         duration: this.duration,
-        easingMethod: tf,
+        easingMethod: this.curveFn,
         delay: this.delay,
         reverse: this.reverse,
         repeat: this.repeat,
@@ -309,6 +210,9 @@
         // Compute percent value
         if (diff > delay && duration) {
           percent = (diff - delay) / duration;
+
+          // If we are animating in the opposite direction,
+          // the percentage is 1 minus this perc val
           if(reverse === true) {
             percent = 1 - percent;
             if (percent < 0) {
@@ -349,6 +253,4 @@
 
     }
   };
-
-
 })(window);
